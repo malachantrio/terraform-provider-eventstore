@@ -2,6 +2,7 @@ package eventstore
 
 import (
   "context"
+  "strings"
 
   "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
   "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -91,6 +92,9 @@ func resourceSubscription() *schema.Resource {
         Default:  500,
       },
     },
+    Importer: &schema.ResourceImporter{
+      StateContext: schema.ImportStatePassthroughContext,
+    },
   }
 }
 
@@ -132,13 +136,21 @@ func resourceSubscriptionRead(ctx context.Context, d *schema.ResourceData, m int
 
   client := m.(*eventstore.Client)
 
+  idSlice := strings.Split(d.Id(), "/")
+
+  streamName := idSlice[0]
+  subscriptionName := idSlice[1]
+
   subscription, err := client.GetSubscription(
-    d.Get("stream_name").(string),
-    d.Get("subscription_name").(string))
+    streamName,
+    subscriptionName)
 
   if err != nil {
     return diag.FromErr(err)
   }
+
+  d.Set("stream_name", streamName)
+  d.Set("subscription_name", subscriptionName)
 
   d.Set("min_checkpoint_count", subscription.MinCheckPointCount)
   d.Set("start_from", subscription.StartFrom)
